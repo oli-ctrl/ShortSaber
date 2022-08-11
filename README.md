@@ -1,6 +1,6 @@
 # ShortSaber
 
-Change the lenght of the saber
+Change the length of the saber
 
 ## Credits
 
