@@ -30,8 +30,10 @@ Logger& getLogger() {
 MAKE_HOOK_MATCH(sabersize, &Saber::ManualUpdate, void, Saber *self)
 {
     sabersize (self);
+    // checks if the mod config says the mod is enabled
     if (getMainConfig().Mod_active.GetValue()){
-    self->get_transform()->set_localScale({1, 1, getMainConfig().Length.GetValue()});
+    // sets the saber thickness and length based on the mod config
+    self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
     }
 }
 
@@ -46,17 +48,29 @@ void DidActivate(HMUI::ViewController* self, bool firstActivation, bool addedToH
         // Create a text that says "Hello World!" and set the parent to the container.
         QuestUI::BeatSaberUI::CreateText(container->get_transform(), "The mod config, change these settings or completely turn off the mod!");
 
-
+        // the mod active toggle
         QuestUI::BeatSaberUI::CreateToggle(container->get_transform(), "Mod Enabled", getMainConfig().Mod_active.GetValue(), [](bool value) {
 		getMainConfig().Mod_active.SetValue(value, true);
         });
         // the saber length config slider
-        QuestUI::SliderSetting* sliderSetting = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "length", 0.1f , getMainConfig().Length.GetValue(), 0.0f, 5.0f, 1.0f, [](float value){
+        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "length", 0.01f , getMainConfig().Length.GetValue(), 0.01f, 15.0f, 1.0f, [](float value){
             getMainConfig().Length.SetValue(value, true);
         });
-    
-        
-    }   
+        // the saber thickness slider
+        QuestUI::SliderSetting *sliderSetting2 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Thickness", 0.01f , getMainConfig().Thickness.GetValue(), 0.0f, 15.0f, 1.0f, [](float value){
+            getMainConfig().Thickness.SetValue(value, true);
+        });
+
+        // reset button
+
+        QuestUI::BeatSaberUI::CreateUIButton(container->get_transform(), "Reset sabers",
+        [sliderSetting1, sliderSetting2]() {
+            getMainConfig().Thickness.SetValue(1);
+            getMainConfig().Length.SetValue(1);
+            sliderSetting1->set_value(getMainConfig().Length.GetValue());
+            sliderSetting2->set_value(getMainConfig().Thickness.GetValue());
+        });
+    }       
 }
 
 
