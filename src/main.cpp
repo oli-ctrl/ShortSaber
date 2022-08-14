@@ -9,15 +9,6 @@
 
 bool inMulti;
 
-void disableScoreSubmission() {
-	bs_utils::Submission::disable;
-}
-
-void enableScoreSubmission() {
-	bs_utils::Submission::enable;
-}
-
-
 using namespace GlobalNamespace;
 using namespace UnityEngine;
 DEFINE_CONFIG(MainConfig)
@@ -37,7 +28,7 @@ Logger& getLogger() {
     return *logger;
 }
 
-
+// hook for getting environment 
 MAKEHOOK_MATCH(MenuEnvironmentManager_ShowEnvironmentType, &GlobalNamespace::MenuEnvironmentManager::ShowEnvironmentType, void, GlobalNamespace::MenuEnvironmentManager* self, GlobalNamespace::MenuEnvironmentManager::MenuEnvironmentType menuEnvironmentType){
     MenuEnvironmentManager_ShowEnvironmentType(self, menuEnvironmentType);
 
@@ -56,26 +47,25 @@ MAKEHOOK_MATCH(MenuEnvironmentManager_ShowEnvironmentType, &GlobalNamespace::Men
     }
 }
 
+// hook for changing saber size
 MAKE_HOOK_MATCH(sabersize, &Saber::ManualUpdate, void, Saber *self){
     sabersize (self);
-    // checks if the mod config says the mod is enabled
+    // checks if the mod config says the mod is enabled or the player is in a multiplayer lobby
     if (getMainConfig().Mod_active.GetValue() && inMulti == false){
     // sets the saber thickness and length based on the mod config
     self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
 
-    
+    // if the saber length is more than 1 disable score submission
     if (getMainConfig().Length.GetValue() > 1){
-        void disableScoreSubmission() {
+        bs_utils::Submission::disable;
     }
     else{
-        void enableScoreSubmission() {
+        bs_utils::Submission::enable;
     }
     }
     
     }
-    }
-}
-
+    
 
 void DidActivate(HMUI::ViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     // Create our UI elements only when shown for the first time.
