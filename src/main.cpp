@@ -5,6 +5,17 @@
 #include "questui/shared/BeatSaberUI.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "MainConfig.hpp"
+#include "bs_utils.hpp"
+
+bool inMulti;
+
+void disableScoreSubmission() {
+	bs_utils::Submission::disable;
+}
+
+void enableScoreSubmission() {
+	bs_utils::Submission::enable;
+}
 
 
 using namespace GlobalNamespace;
@@ -27,16 +38,43 @@ Logger& getLogger() {
 }
 
 
-MAKE_HOOK_MATCH(sabersize, &Saber::ManualUpdate, void, Saber *self)
-{
-    sabersize (self);
-    // checks if the mod config says the mod is enabled
-    if (getMainConfig().Mod_active.GetValue()){
-    // sets the saber thickness and length based on the mod config
-    self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
+MAKEHOOK_MATCH(MenuEnvironmentManager_ShowEnvironmentType, &GlobalNamespace::MenuEnvironmentManager::ShowEnvironmentType, void, GlobalNamespace::MenuEnvironmentManager* self, GlobalNamespace::MenuEnvironmentManager::MenuEnvironmentType menuEnvironmentType){
+    MenuEnvironmentManager_ShowEnvironmentType(self, menuEnvironmentType);
+
+    switch (menuEnvironmentType) {
+        case MenuEnvironmentType::None:
+            break;
+        case MenuEnvironmentType::Default:
+            inMulti = false;
+            break;
+        case MenuEnvironmentType::Lobby:
+            inMulti = true;
+            break;
+        default:
+            break;
+
     }
 }
 
+MAKE_HOOK_MATCH(sabersize, &Saber::ManualUpdate, void, Saber *self){
+    sabersize (self);
+    // checks if the mod config says the mod is enabled
+    if (getMainConfig().Mod_active.GetValue() && inMulti == false){
+    // sets the saber thickness and length based on the mod config
+    self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
+
+    
+    if (getMainConfig().Length.GetValue() > 1){
+        void disableScoreSubmission() {
+    }
+    else{
+        void enableScoreSubmission() {
+    }
+    }
+    
+    }
+    }
+}
 
 
 void DidActivate(HMUI::ViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -53,7 +91,7 @@ void DidActivate(HMUI::ViewController* self, bool firstActivation, bool addedToH
 		getMainConfig().Mod_active.SetValue(value, true);
         });
         // the saber length config slider
-        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "length", 0.01f , getMainConfig().Length.GetValue(), 0.01f, 15.0f, 1.0f, [](float value){
+        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "length", 0.01f , getMainConfig().Length.GetValue(), -0.01f, 15.0f, 1.0f, [](float value){
             getMainConfig().Length.SetValue(value, true);
         });
         // the saber thickness slider
@@ -64,7 +102,7 @@ void DidActivate(HMUI::ViewController* self, bool firstActivation, bool addedToH
         // reset button
 
         QuestUI::BeatSaberUI::CreateUIButton(container->get_transform(), "Reset sabers",
-        [sliderSetting1, sliderSetting2]() {
+            [sliderSetting1, sliderSetting2]() {
             getMainConfig().Thickness.SetValue(1);
             getMainConfig().Length.SetValue(1);
             sliderSetting1->set_value(getMainConfig().Length.GetValue());
@@ -99,6 +137,7 @@ extern "C" void load() {
     getLogger().info("Installing hooks...");
 
     INSTALL_HOOK(getLogger(),sabersize);
+    INSTALL_HOOK(getLogger(),MenuEnvironmentManager_ShowEnvironmentType)
     
     
     getLogger().info("Installed all hooks!");

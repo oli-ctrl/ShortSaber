@@ -8,6 +8,7 @@ DECLARE_CONFIG(MainConfig,
 
     CONFIG_VALUE(Length, float, "Length", 1);
     CONFIG_VALUE(Thickness, float, "Thickness", 1);
+    
 
     CONFIG_INIT_FUNCTION(
         CONFIG_INIT_VALUE(Mod_active);
