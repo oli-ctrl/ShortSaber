@@ -5,12 +5,14 @@
 #include "questui/shared/BeatSaberUI.hpp"
 #include "UnityEngine/Transform.hpp"
 #include "MainConfig.hpp"
-#include "bs_utils.hpp"
-
+#include "GlobalNamespace/MenuEnvironmentManager.hpp"
+#include "bs-utils/shared/utils.hpp"
 bool inMulti;
+
 
 using namespace GlobalNamespace;
 using namespace UnityEngine;
+using MenuEnvironmentType = GlobalNamespace::MenuEnvironmentManager::MenuEnvironmentType;
 DEFINE_CONFIG(MainConfig)
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
@@ -28,43 +30,49 @@ Logger& getLogger() {
     return *logger;
 }
 
-// hook for getting environment 
-MAKEHOOK_MATCH(MenuEnvironmentManager_ShowEnvironmentType, &GlobalNamespace::MenuEnvironmentManager::ShowEnvironmentType, void, GlobalNamespace::MenuEnvironmentManager* self, GlobalNamespace::MenuEnvironmentManager::MenuEnvironmentType menuEnvironmentType){
-    MenuEnvironmentManager_ShowEnvironmentType(self, menuEnvironmentType);
 
+
+MAKE_HOOK_MATCH(Environment, &GlobalNamespace::MenuEnvironmentManager::ShowEnvironmentType, void, GlobalNamespace::MenuEnvironmentManager* self, GlobalNamespace::MenuEnvironmentManager::MenuEnvironmentType menuEnvironmentType)
+{
+    Environment(self, menuEnvironmentType);
+    getLogger().info("environment hook");
     switch (menuEnvironmentType) {
         case MenuEnvironmentType::None:
             break;
         case MenuEnvironmentType::Default:
             inMulti = false;
+            getMainConfig().Mod_active.SetValue(true);
+            getLogger().info("false");
             break;
         case MenuEnvironmentType::Lobby:
             inMulti = true;
+            getMainConfig().Mod_active.SetValue(false);
+            getLogger().info("true");
             break;
         default:
             break;
-
     }
 }
-
+;
 // hook for changing saber size
 MAKE_HOOK_MATCH(sabersize, &Saber::ManualUpdate, void, Saber *self){
     sabersize (self);
+
     // checks if the mod config says the mod is enabled or the player is in a multiplayer lobby
-    if (getMainConfig().Mod_active.GetValue() && inMulti == false){
+    if (getMainConfig().Mod_active.GetValue()){
     // sets the saber thickness and length based on the mod config
     self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
-
+    }
     // if the saber length is more than 1 disable score submission
-    if (getMainConfig().Length.GetValue() > 1){
-        bs_utils::Submission::disable;
+    else if (getMainConfig().Length.GetValue() != 1){
+        bs_utils::Submission::disable(modInfo);
     }
     else{
-        bs_utils::Submission::enable;
+        bs_utils::Submission::enable(modInfo);
     }
     }
     
-    }
+
     
 
 void DidActivate(HMUI::ViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -118,7 +126,6 @@ extern "C" void load() {
     il2cpp_functions::Init();
     
     
-
     QuestUI::Init();
     QuestUI::Register::RegisterModSettingsViewController(modInfo, DidActivate);
     QuestUI::Register::RegisterMainMenuModSettingsViewController(modInfo, DidActivate);
@@ -127,7 +134,7 @@ extern "C" void load() {
     getLogger().info("Installing hooks...");
 
     INSTALL_HOOK(getLogger(),sabersize);
-    INSTALL_HOOK(getLogger(),MenuEnvironmentManager_ShowEnvironmentType)
+    INSTALL_HOOK(getLogger(),Environment)
     
     
     getLogger().info("Installed all hooks!");
