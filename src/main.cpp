@@ -6,13 +6,10 @@
 #include "UnityEngine/Transform.hpp"
 #include "MainConfig.hpp"
 #include "bs-utils/shared/utils.hpp"
-#include "GlobalNamespace/MultiplayerLobbyController.hpp"
 #include "GlobalNamespace/LobbySetupViewController.hpp"
-#include "GlobalNamespace/MenuEnvironmentManager.hpp"
 #include "GlobalNamespace/MultiplayerModeSelectionViewController.hpp"
 
 bool inMulti, score_sub;
-int resizeCycle;
 
 using namespace GlobalNamespace;
 using namespace UnityEngine;
@@ -33,17 +30,6 @@ Logger &getLogger()
 {
     static Logger *logger = new Logger(modInfo);
     return *logger;
-}
-
-// resets our variable to only resize sabers once
-MAKE_HOOK_MATCH(ActivationResetter, &MenuEnvironmentManager::ShowEnvironmentType, void, MenuEnvironmentManager *self, MenuEnvironmentManager::MenuEnvironmentType menuEnvironmentType)
-{
-    ActivationResetter(self, menuEnvironmentType);
-    if (resizeCycle != 0)
-    {
-        resizeCycle = 0;
-        getLogger().info("Will resize on next song start");
-    }
 }
 
 // tells us when the player joins multiplayer to disable the mod
@@ -69,30 +55,21 @@ MAKE_HOOK_MATCH(LeaveLobbyUpdater, &MultiplayerModeSelectionViewController::DidA
 MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
 {
     SaberSizeChanger(self);
-
-    // checks if the mod config says the mod is enabled or the player is in a multiplayer lobby, only activates once
-    if (resizeCycle < 2)
-    {
-        if (getMainConfig().Mod_active.GetValue() && !inMulti)
+    
+        // only activates if the saber is not correctly sized
+        if (getMainConfig().Mod_active.GetValue() && !inMulti && getMainConfig().Thickness.GetValue() != self->get_transform()->get_localScale().x && getMainConfig().Length.GetValue() != self->get_transform()->get_localScale().z)
         {
             // sets the saber thickness and length based on the mod config
             self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
             getLogger().info("Not in multiplayer, resizing saber to %fw %fl", self->get_transform()->get_localScale().x, self->get_transform()->get_localScale().z);
         }
-        else
-        {
-            self->get_transform()->set_localScale({1, 1, 1});
-            getLogger().info("In multiplayer, setting sabers to default size");
-        }
-        resizeCycle++;
-    }
 
-    // if the saber length is more than 1 disable score submission, not active in multiplayer as sabers are forced to default size
+    // if the saber length is more than 1 disable score submission, reenables in multiplayer as sabers are forced to default size
     if (!inMulti)
     {
         if (getMainConfig().Mod_active.GetValue())
         {
-            if (getMainConfig().Length.GetValue() != 1)
+            if (getMainConfig().Length.GetValue() > 1 || getMainConfig().Thickness.GetValue() > 1)
             {
                 if (score_sub == false)
                 {
@@ -115,8 +92,7 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
 }
 
 void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
-{
-    // Create our UI elements only when shown for the first time.
+{        
     if (firstActivation)
     {
         // Create a container that has a scroll bar.
@@ -136,7 +112,6 @@ void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToH
                                                                                            { getMainConfig().Thickness.SetValue(value, true); });
 
         // reset button
-
         QuestUI::BeatSaberUI::CreateUIButton(container->get_transform(), "Reset sabers",
                                              [sliderSetting1, sliderSetting2]()
                                              {
@@ -173,7 +148,6 @@ extern "C" void load()
 
     INSTALL_HOOK(getLogger(), SaberSizeChanger);
     INSTALL_HOOK(getLogger(), JoinLobbyUpdater);
-    INSTALL_HOOK(getLogger(), ActivationResetter);
     INSTALL_HOOK(getLogger(), LeaveLobbyUpdater);
 
     getLogger().info("Installed all hooks!");
