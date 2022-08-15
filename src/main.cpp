@@ -7,7 +7,7 @@
 #include "MainConfig.hpp"
 #include "GlobalNamespace/MenuEnvironmentManager.hpp"
 #include "bs-utils/shared/utils.hpp"
-bool inMulti;
+bool inMulti, score_sub;
 
 
 using namespace GlobalNamespace;
@@ -39,17 +39,17 @@ MAKE_HOOK_MATCH(Environment, &GlobalNamespace::MenuEnvironmentManager::ShowEnvir
     switch (menuEnvironmentType) {
         case MenuEnvironmentType::None:
             break;
+            getLogger().info("env-none");
         case MenuEnvironmentType::Default:
             inMulti = false;
-            getMainConfig().Mod_active.SetValue(true);
-            getLogger().info("false");
+            getLogger().info("env-default");
             break;
         case MenuEnvironmentType::Lobby:
             inMulti = true;
-            getMainConfig().Mod_active.SetValue(false);
-            getLogger().info("true");
+            getLogger().info("env-lobby");
             break;
         default:
+            getLogger().info("Default");
             break;
     }
 }
@@ -58,17 +58,42 @@ MAKE_HOOK_MATCH(Environment, &GlobalNamespace::MenuEnvironmentManager::ShowEnvir
 MAKE_HOOK_MATCH(sabersize, &Saber::ManualUpdate, void, Saber *self){
     sabersize (self);
 
+
+    getLogger().info("saber hook");
+
+    getLogger().info("in multi status %d", inMulti );
+
+
     // checks if the mod config says the mod is enabled or the player is in a multiplayer lobby
-    if (getMainConfig().Mod_active.GetValue()){
-    // sets the saber thickness and length based on the mod config
-    self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
+    if (getMainConfig().Mod_active.GetValue() && !inMulti){
+        // sets the saber thickness and length based on the mod config
+        self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
+         getLogger().info("1");
     }
+    else {
+        self->get_transform()->set_localScale({1, 1, 1});
+        getLogger().info("else");
+    }
+
+
+
     // if the saber length is more than 1 disable score submission
-    else if (getMainConfig().Length.GetValue() != 1){
-        bs_utils::Submission::disable(modInfo);
+    if (getMainConfig().Mod_active.GetValue()){
+        if (getMainConfig().Length.GetValue() != 1){
+            if (score_sub == 0){
+                bs_utils::Submission::disable(modInfo);
+                score_sub = 1;
+        getLogger().info("disable score");
+    }
+    }
     }
     else{
-        bs_utils::Submission::enable(modInfo);
+        if (score_sub == 1){
+            bs_utils::Submission::enable(modInfo);
+            getLogger().info("enable score");
+            score_sub = 0;
+        }
+        
     }
     }
     
@@ -89,7 +114,7 @@ void DidActivate(HMUI::ViewController* self, bool firstActivation, bool addedToH
 		getMainConfig().Mod_active.SetValue(value, true);
         });
         // the saber length config slider
-        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "length", 0.01f , getMainConfig().Length.GetValue(), -0.01f, 15.0f, 1.0f, [](float value){
+        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "length", 0.01f , getMainConfig().Length.GetValue(), 0.01f, 15.0f, 1.0f, [](float value){
             getMainConfig().Length.SetValue(value, true);
         });
         // the saber thickness slider
