@@ -57,7 +57,7 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
     SaberSizeChanger(self);
     
         // only activates if the saber is not correctly sized
-        if (getMainConfig().Mod_active.GetValue() && !inMulti && getMainConfig().Thickness.GetValue() != self->get_transform()->get_localScale().x && getMainConfig().Length.GetValue() != self->get_transform()->get_localScale().z)
+        if (getMainConfig().Mod_active.GetValue() && !inMulti && self->get_transform()->get_localScale() != UnityEngine::Vector3(getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()))
         {
             // sets the saber thickness and length based on the mod config
             self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
@@ -105,10 +105,10 @@ void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToH
         QuestUI::BeatSaberUI::CreateToggle(container->get_transform(), "Mod Enabled", getMainConfig().Mod_active.GetValue(), [](bool value)
                                            { getMainConfig().Mod_active.SetValue(value, true); });
         // the saber length config slider
-        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "length", 0.01f, getMainConfig().Length.GetValue(), 0.01f, 15.0f, 1.0f, [](float value)
+        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Length", 0.01f, getMainConfig().Length.GetValue(), 0.01f, 15.0f, 0.01f, [](float value)
                                                                                            { getMainConfig().Length.SetValue(value, true); });
         // the saber thickness slider
-        QuestUI::SliderSetting *sliderSetting2 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Thickness", 0.01f, getMainConfig().Thickness.GetValue(), 0.0f, 15.0f, 1.0f, [](float value)
+        QuestUI::SliderSetting *sliderSetting2 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Thickness", 0.01f, getMainConfig().Thickness.GetValue(), 0.01f, 15.0f, 0.01f, [](float value)
                                                                                            { getMainConfig().Thickness.SetValue(value, true); });
 
         // reset button
