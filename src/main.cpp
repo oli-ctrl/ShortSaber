@@ -38,6 +38,8 @@ MAKE_HOOK_MATCH(JoinLobbyUpdater, &LobbySetupViewController::DidActivate, void, 
     JoinLobbyUpdater(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     inMulti = true;
     getLogger().info("Joined multiplayer, disabling mod");
+    bs_utils::Submission::disable(modInfo);
+    score_sub = false;
 }
 
 // tells us when the player leavs multiplayer to enable the mod
@@ -71,21 +73,21 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
         {
             if (getMainConfig().Length.GetValue() > 1 || getMainConfig().Thickness.GetValue() > 1)
             {
-                if (score_sub == false)
+                if (score_sub == true)
                 {
                     bs_utils::Submission::disable(modInfo);
-                    score_sub = true;
+                    score_sub = false;
                     getLogger().info("Disable score");
                 }
             }
         }
         else
         {
-            if (score_sub == true)
+            if (score_sub == false)
             {
                 bs_utils::Submission::enable(modInfo);
                 getLogger().info("Enable score");
-                score_sub = false;
+                score_sub = true;
             }
         }
     }
