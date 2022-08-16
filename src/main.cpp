@@ -65,14 +65,19 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
         updateScoreSub = true;
     }
 
-    if(updateScoreSub)
+    if (!inMulti)
     {
-        if(self->get_transform()->get_localScale().x > 1 || self->get_transform()->get_localScale().z > 1)
-        bs_utils::Submission::disable(modInfo);
-        else
-        bs_utils::Submission::enable(modInfo);
-        updateScoreSub = false;
+        if (updateScoreSub)
+        {
+            if (self->get_transform()->get_localScale().x > 1 || self->get_transform()->get_localScale().z > 1)
+                bs_utils::Submission::disable(modInfo);
+            else
+                bs_utils::Submission::enable(modInfo);
+            updateScoreSub = false;
+        }
     }
+    else
+        bs_utils::Submission::enable(modInfo);
 }
 
 void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
