@@ -15,7 +15,7 @@
         "${workspaceFolder}/shared", 
         "${workspaceFolder}",
         
-        "E:/bs_modding_stuff/installs/android-ndk-r25-windows/android-ndk-r25/**",
+        "c:/android-ndk/**",
         "${default}"
       ],
       "name": "Quest",
