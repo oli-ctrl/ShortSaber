@@ -9,7 +9,7 @@
 #include "GlobalNamespace/LobbySetupViewController.hpp"
 #include "GlobalNamespace/MultiplayerModeSelectionViewController.hpp"
 
-bool inMulti, score_sub;
+bool inMulti, updateScoreSub;
 
 using namespace GlobalNamespace;
 using namespace UnityEngine;
@@ -38,8 +38,6 @@ MAKE_HOOK_MATCH(JoinLobbyUpdater, &LobbySetupViewController::DidActivate, void, 
     JoinLobbyUpdater(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     inMulti = true;
     getLogger().info("Joined multiplayer, disabling mod");
-    bs_utils::Submission::disable(modInfo);
-    score_sub = false;
 }
 
 // tells us when the player leavs multiplayer to enable the mod
@@ -57,44 +55,28 @@ MAKE_HOOK_MATCH(LeaveLobbyUpdater, &MultiplayerModeSelectionViewController::DidA
 MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
 {
     SaberSizeChanger(self);
-    
-        // only activates if the saber is not correctly sized
-        if (getMainConfig().Mod_active.GetValue() && !inMulti && self->get_transform()->get_localScale() != UnityEngine::Vector3(getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()))
-        {
-            // sets the saber thickness and length based on the mod config
-            self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
-            getLogger().info("Not in multiplayer, resizing saber to %fw %fl", self->get_transform()->get_localScale().x, self->get_transform()->get_localScale().z);
-        }
 
-    // if the saber length is more than 1 disable score submission, reenables in multiplayer as sabers are forced to default size
-    if (!inMulti)
+    // only activates if the saber is not correctly sized
+    if (getMainConfig().Mod_active.GetValue() && !inMulti && self->get_transform()->get_localScale() != UnityEngine::Vector3(getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()))
     {
-        if (getMainConfig().Mod_active.GetValue())
-        {
-            if (getMainConfig().Length.GetValue() > 1 || getMainConfig().Thickness.GetValue() > 1)
-            {
-                if (score_sub == true)
-                {
-                    bs_utils::Submission::disable(modInfo);
-                    score_sub = false;
-                    getLogger().info("Disable score");
-                }
-            }
-        }
+        // sets the saber thickness and length based on the mod config
+        self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
+        getLogger().info("Not in multiplayer, resizing saber to %fw %fl", self->get_transform()->get_localScale().x, self->get_transform()->get_localScale().z);
+        updateScoreSub = true;
+    }
+
+    if(updateScoreSub)
+    {
+        if(self->get_transform()->get_localScale().x > 1 || self->get_transform()->get_localScale().z > 1)
+        bs_utils::Submission::disable(modInfo);
         else
-        {
-            if (score_sub == false)
-            {
-                bs_utils::Submission::enable(modInfo);
-                getLogger().info("Enable score");
-                score_sub = true;
-            }
-        }
+        bs_utils::Submission::enable(modInfo);
+        updateScoreSub = false;
     }
 }
 
 void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
-{        
+{
     if (firstActivation)
     {
         // Create a container that has a scroll bar.
