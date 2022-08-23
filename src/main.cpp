@@ -97,7 +97,7 @@ void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToH
         QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Length", 0.01f, getMainConfig().Length.GetValue(), 0.01f, 15.0f, 0.01f, [](float value)
                                                                                            { getMainConfig().Length.SetValue(value, true); });
         // the saber thickness slider
-        QuestUI::SliderSetting *sliderSetting2 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Thickness", 0.01f, getMainConfig().Thickness.GetValue(), 0.01f, 15.0f, 0.01f, [](float value)
+        QuestUI::SliderSetting *sliderSetting2 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Thickness", 0.01f, getMainConfig().Thickness.GetValue(), 0.00f, 15.0f, 0.01f, [](float value)
                                                                                            { getMainConfig().Thickness.SetValue(value, true); });
 
         // reset button
