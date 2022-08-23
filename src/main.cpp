@@ -64,7 +64,8 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
         getLogger().info("Not in multiplayer, resizing saber to %fw %fl", self->get_transform()->get_localScale().x, self->get_transform()->get_localScale().z);
         updateScoreSub = true;
     }
-
+        
+    
     if (!inMulti)
     {
         if (updateScoreSub)
@@ -76,8 +77,13 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
             updateScoreSub = false;
         }
     }
+    if (inMulti){
+        self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(),1});
+        bs_utils::Submission::enable(modInfo);
+    }
     else
         bs_utils::Submission::enable(modInfo);
+        
 }
 
 void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
