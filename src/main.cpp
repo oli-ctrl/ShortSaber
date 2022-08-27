@@ -56,20 +56,18 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
 {
     SaberSizeChanger(self);
 
-    // only activates if the saber is not correctly sized
-    if (getMainConfig().Mod_active.GetValue() && !inMulti && self->get_transform()->get_localScale() != UnityEngine::Vector3(getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()))
-    {
+    // only activates if the saber is not correctly sized to reduce spamming of changing saber size 
+    if (getMainConfig().Mod_active.GetValue() && !inMulti && self->get_transform()->get_localScale() != UnityEngine::Vector3(getMainConfig().Thickness.GetValue(), 
+    getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue())){
         // sets the saber thickness and length based on the mod config
         self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
         getLogger().info("Not in multiplayer, resizing saber to %fw %fl", self->get_transform()->get_localScale().x, self->get_transform()->get_localScale().z);
         updateScoreSub = true;
     }
         
-    
-    if (!inMulti)
-    {
-        if (updateScoreSub)
-        {
+    // enable and disable score submission if saber is long
+    if (!inMulti){
+        if (updateScoreSub){
             if (self->get_transform()->get_localScale().x > 1 || self->get_transform()->get_localScale().z > 1)
                 bs_utils::Submission::disable(modInfo);
             else
@@ -77,10 +75,12 @@ MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
             updateScoreSub = false;
         }
     }
+    // only change the thickness of the saber when in multiplayer but have the default length
     if (inMulti){
         self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(),1});
         bs_utils::Submission::enable(modInfo);
     }
+    // enable score submission
     else
         bs_utils::Submission::enable(modInfo);
         
