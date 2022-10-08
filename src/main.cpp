@@ -13,6 +13,7 @@
 
 using namespace GlobalNamespace;
 using namespace UnityEngine;
+
 DEFINE_CONFIG(MainConfig);
 
 bool inMulti;
@@ -61,10 +62,7 @@ MAKE_HOOK_MATCH(SceneManager_Internal_ActiveSceneChanged, &SceneManagement::Scen
 MAKE_HOOK_MATCH(MultiplayerModeSelectionViewController_DidActivate, &MultiplayerModeSelectionViewController::DidActivate, void, MultiplayerModeSelectionViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 {
     MultiplayerModeSelectionViewController_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    if (inMulti)
-    {
-        inMulti = false;
-    }
+    inMulti = false;
 }
 
 // Update score submission in menus so the red text is shown if neccessary
