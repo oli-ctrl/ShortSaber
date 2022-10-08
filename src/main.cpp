@@ -158,6 +158,7 @@ extern "C" void load()
     INSTALL_HOOK(getLogger(), LobbySetupViewController_DidActivate);
     INSTALL_HOOK(getLogger(), MultiplayerModeSelectionViewController_DidActivate);
     INSTALL_HOOK(getLogger(), MainMenuViewController_DidActivate);
+    INSTALL_HOOK(getLogger(), SceneManager_Internal_ActiveSceneChanged);
 
     getLogger().info("Installed all hooks!");
 }
