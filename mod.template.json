@@ -4,7 +4,7 @@
   "name": "${mod_name}",
   "id": "${mod_id}",
   "author": "Oli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "packageId": "com.beatgames.beatsaber",
   "packageVersion": "1.24.0",
   "description": "Change the length of the saber",
