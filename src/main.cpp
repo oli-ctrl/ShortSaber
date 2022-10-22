@@ -8,13 +8,24 @@
 #include "bs-utils/shared/utils.hpp"
 #include "GlobalNamespace/LobbySetupViewController.hpp"
 #include "GlobalNamespace/MultiplayerModeSelectionViewController.hpp"
-
-bool inMulti, updateScoreSub, score_sub;
-
+#include "UnityEngine/SceneManagement/SceneManager.hpp"
+#include "GlobalNamespace/MainMenuViewController.hpp"
 
 using namespace GlobalNamespace;
 using namespace UnityEngine;
+
 DEFINE_CONFIG(MainConfig);
+
+bool inMulti;
+int shouldUpdate = 2;
+
+bool fairSize()
+{
+    if(getMainConfig().Thickness.GetValue() > 1 || getMainConfig().Length.GetValue() > 1)
+        return false;
+    else 
+        return true;
+}
 
 static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 
@@ -33,66 +44,56 @@ Logger &getLogger()
     return *logger;
 }
 
-//when the player joins multiplayer 
-MAKE_HOOK_MATCH(JoinLobbyUpdater, &LobbySetupViewController::DidActivate, void, LobbySetupViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+// when the player joins multiplayer
+MAKE_HOOK_MATCH(LobbySetupViewController_DidActivate, &LobbySetupViewController::DidActivate, void, LobbySetupViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 {
-    JoinLobbyUpdater(self, firstActivation, addedToHierarchy, screenSystemEnabling);
+    LobbySetupViewController_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     inMulti = true;
-    getLogger().info("Joined multiplayer, disabling mod");
 }
 
-//when the player leavs multiplayer
-MAKE_HOOK_MATCH(LeaveLobbyUpdater, &MultiplayerModeSelectionViewController::DidActivate, void, MultiplayerModeSelectionViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+// activates on scene change, useful for resetting update count at start of song
+MAKE_HOOK_MATCH(SceneManager_Internal_ActiveSceneChanged, &SceneManagement::SceneManager::Internal_ActiveSceneChanged, void, UnityEngine::SceneManagement::Scene previousActiveScene, UnityEngine::SceneManagement::Scene newActiveScene)
 {
-    LeaveLobbyUpdater(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    if (inMulti)
-    {
-        inMulti = false;
-        getLogger().info("Left multiplayer, enabling mod");
-    }
+    SceneManager_Internal_ActiveSceneChanged(previousActiveScene, newActiveScene);
+    shouldUpdate = 2;
+}
+
+// when the player leaves multiplayer
+MAKE_HOOK_MATCH(MultiplayerModeSelectionViewController_DidActivate, &MultiplayerModeSelectionViewController::DidActivate, void, MultiplayerModeSelectionViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+{
+    MultiplayerModeSelectionViewController_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
+    inMulti = false;
+}
+
+// Update score submission in menus so the red text is shown if neccessary
+MAKE_HOOK_MATCH(MainMenuViewController_DidActivate, &MainMenuViewController::DidActivate, void, MainMenuViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+{
+    MainMenuViewController_DidActivate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
+
+    if((fairSize() && !bs_utils::Submission::getEnabled()) || !getMainConfig().Mod_active.GetValue())
+        bs_utils::Submission::enable(modInfo);
+    else if (!fairSize() && bs_utils::Submission::getEnabled())
+        bs_utils::Submission::disable(modInfo);
 }
 
 // hook for changing saber size
-MAKE_HOOK_MATCH(SaberSizeChanger, &Saber::ManualUpdate, void, Saber *self)
+MAKE_HOOK_MATCH(Saber_ManualUpdate, &Saber::ManualUpdate, void, Saber *self)
 {
-    SaberSizeChanger(self);
+    Saber_ManualUpdate(self);
 
-    // only activates if the saber is not correctly sized to reduce spamming of changing saber size 
-    if (getMainConfig().Mod_active.GetValue() && !inMulti && self->get_transform()->get_localScale() != UnityEngine::Vector3(getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue())){
+    // only activates twice
+    if (getMainConfig().Mod_active.GetValue() && shouldUpdate)
+    {
         // sets the saber thickness and length based on the mod config
-        self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
-        getLogger().info("Not in multiplayer, resizing saber to %fw %fl", self->get_transform()->get_localScale().x, self->get_transform()->get_localScale().z);
-        updateScoreSub = true;
-        
+        if (!inMulti)
+            self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), getMainConfig().Length.GetValue()});
+
+        // only change the thickness of the saber when in multiplayer but have the default length
+        if (inMulti)
+            self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(), 1});
+
+        shouldUpdate--;
     }
-        
-    // enable and disable score submission if saber is long
-    if (!inMulti){
-        if (updateScoreSub){
-            if (self->get_transform()->get_localScale().x > 1 || self->get_transform()->get_localScale().z > 1){
-                bs_utils::Submission::disable(modInfo);
-                score_sub = "disabled";
-                }
-            else{
-                bs_utils::Submission::enable(modInfo);
-                score_sub = "enabled";
-                updateScoreSub = false;
-            }
-        }
-    }
-    // only change the thickness of the saber when in multiplayer but have the default length
-    if (inMulti && getMainConfig().Mod_active.GetValue()) {
-        if (getMainConfig().Thickness.GetValue() >= 1){
-            self->get_transform()->set_localScale({getMainConfig().Thickness.GetValue(), getMainConfig().Thickness.GetValue(),1});
-        }
-        bs_utils::Submission::enable(modInfo);
-        score_sub = "enabled";
-    }
-    // enable score submission
-    else
-        bs_utils::Submission::enable(modInfo);
-        score_sub = "enabled";
-        
 }
 
 void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
@@ -105,21 +106,23 @@ void DidActivate(HMUI::ViewController *self, bool firstActivation, bool addedToH
         // Create a text that says "Hello World!" and set the parent to the container.
         QuestUI::BeatSaberUI::CreateText(container->get_transform(), "The mod config, change these settings or completely turn off the mod!");
         // the mod active toggle
-        QuestUI::BeatSaberUI::CreateToggle(container->get_transform(), "Mod Enabled", getMainConfig().Mod_active.GetValue(), [](bool value){
-            getMainConfig().Mod_active.SetValue(value, true); 
-            });
+        QuestUI::BeatSaberUI::CreateToggle(container->get_transform(), "Mod Enabled", getMainConfig().Mod_active.GetValue(), [](bool value)
+                                           { getMainConfig().Mod_active.SetValue(value, true); });
         // the saber length config slider
-        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Length", 0.01f, getMainConfig().Length.GetValue(), 0.01f, 15.0f, 0.01f, [](float value){
+        QuestUI::SliderSetting *sliderSetting1 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Length", 0.01f, getMainConfig().Length.GetValue(), 0.00f, 15.0f, 0.01f, [](float value)
+        {
             getMainConfig().Length.SetValue(value, true);
-            });
+        });
         // the saber thickness slider
-        QuestUI::SliderSetting *sliderSetting2 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Thickness", 0.01f, getMainConfig().Thickness.GetValue(), 0.00f, 15.0f, 0.01f, [](float value){
+        QuestUI::SliderSetting *sliderSetting2 = QuestUI::BeatSaberUI::CreateSliderSetting(container->get_transform(), "Thickness", 0.01f, getMainConfig().Thickness.GetValue(), 0.00f, 15.0f, 0.01f, [](float value)
+        {
             getMainConfig().Thickness.SetValue(value, true);
-            });
+        });
 
         // reset button
         QuestUI::BeatSaberUI::CreateUIButton(container->get_transform(), "Reset sabers",
-            [sliderSetting1, sliderSetting2](){
+            [sliderSetting1, sliderSetting2]()
+            {
                 getMainConfig().Thickness.SetValue(1);
                 getMainConfig().Length.SetValue(1);
                 sliderSetting1->set_value(getMainConfig().Length.GetValue());
@@ -151,9 +154,11 @@ extern "C" void load()
 
     getLogger().info("Installing hooks...");
 
-    INSTALL_HOOK(getLogger(), SaberSizeChanger);
-    INSTALL_HOOK(getLogger(), JoinLobbyUpdater);
-    INSTALL_HOOK(getLogger(), LeaveLobbyUpdater);
+    INSTALL_HOOK(getLogger(), Saber_ManualUpdate);
+    INSTALL_HOOK(getLogger(), LobbySetupViewController_DidActivate);
+    INSTALL_HOOK(getLogger(), MultiplayerModeSelectionViewController_DidActivate);
+    INSTALL_HOOK(getLogger(), MainMenuViewController_DidActivate);
+    INSTALL_HOOK(getLogger(), SceneManager_Internal_ActiveSceneChanged);
 
     getLogger().info("Installed all hooks!");
 }
